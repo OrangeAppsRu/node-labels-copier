@@ -1,0 +1,42 @@
+name: build and push images
+on:
+  push:
+    paths-ignore:
+    - 'README.md'
+    branches:
+      - main
+    tags:
+      - 'v*.*.*'
+jobs:
+  docker-build-and-publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@main
+      - name: Set env
+        id: env
+        env:
+          IMAGE: ${{ github.repository }}
+        run: |
+          image=`echo -n "${IMAGE}" | tr 'A-Z' 'a-z'`
+          echo "::set-output name=IMAGE::$(echo $image)"
+      - name: Login to registry
+        uses: docker/login-action@v1
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Docker meta
+        id: meta
+        uses: docker/metadata-action@v3
+        with:
+          images: ghcr.io/${{ steps.env.outputs.IMAGE }}
+          flavor: |
+            latest=true
+      - name: Build and push
+        id: docker_build
+        uses: docker/build-push-action@v2
+        with:
+          context: .
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
